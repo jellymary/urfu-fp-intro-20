@@ -233,8 +233,7 @@ foldr f b (h :. t) = f h (foldr f b t)
   Реализуйте с помощью `foldr`.
 -}
 map :: (a -> b) -> List a -> List b
-map _ Nil = Nil
-map f (h :. t) = (f h) :. (map f t)
+map f x = foldr (\x a -> f x :. a) Nil x
 
 {-
   `filter` принимает предикат `f` и список, возвращая список с элементами
@@ -247,10 +246,7 @@ map f (h :. t) = (f h) :. (map f t)
   Реализуйте с помощью `foldr`.
 -}
 filter :: (a -> Bool) -> List a -> List a
-filter _ Nil = Nil
-filter f (h :. t) = if f h
-  then h :. filter f t
-  else filter f t
+filter f xs = foldr (\a b -> if (f a) then a :. b else b) Nil xs
 
 {-
   Правая свёртка действует на список справа, с конца.
