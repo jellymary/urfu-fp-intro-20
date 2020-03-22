@@ -43,11 +43,11 @@ module Lecture04 where
   В Haskell для объявления нового типа используется ключевое слово `data`:
 -}
 
-data Animal = Animal Int String deriving (Eq, Show) 
+data Animal = Animal Int String deriving (Eq, Show)
 {-                   ^--------^ параметры конструктора
               ^ конструктор типа
      ^ имя типа
-   
+
   В Haskell необязательно давать имена параметрам типа в конструкторе.
   Типы с именованными полями называются records или записи.
   Познакомимся с ними чуть позже.
@@ -88,7 +88,7 @@ canMeow (Animal _ _) = error "Непонятно что за зверь"
        Определить `canMeow` в Animal и переопределить в наследниках.
     2. Использовать typeof и смотреть на тип объекта в рантайме.
        При этом Cat и Lion могут быть связаны или несвязаны иерархией наследования.
-    3. Определить интерфейс IMeowable с методом `canMeow` 
+    3. Определить интерфейс IMeowable с методом `canMeow`
     4. Определить Enum AnimalType и добавить его в Animal, а потом
        использовать switch/if.
     5. Использовать Church encoding.
@@ -140,7 +140,7 @@ canMeow'' (Duck' _ _) = False
     getFoodPrice = ...
 
   Мы ничего не меняли в старом коде.
-  
+
   В ООП языке такой тип выглядел бы как абстрактный класс с несколькими наследниками.
   Значит, если мы хотим добавить новый метод в иерархию, мы вынуждены пойти
   в каждого наследника и написать реализацию этого метода для него.
@@ -192,7 +192,7 @@ canMeow'' (Duck' _ _) = False
     }
 
     // Теперь добавим функцию Accept в Statement и её реализацию в каждого наследника
-    
+
     public interface IStatement
     {
         T Accept<T>(IVisitor<T> visitor);
@@ -304,7 +304,7 @@ data RAnimal = RAnimal
     > :t Commission
     Commission :: Double -> Commission
 
-    > :t getCommission 
+    > :t getCommission
     getCommission :: Commission -> Double
 
   Как можно заметить, `newtype` создает изоморфизм между типами.
@@ -329,7 +329,11 @@ newtype AdoptedAnimal = AdoptedAnimal
     - Month
     - Year
 -}
-showDate :: Int -> Int -> Int -> String
+newtype Day = Day Int deriving (Eq, Show)
+newtype Month = Month Int deriving (Eq, Show)
+newtype Year = Year Int deriving (Eq, Show)
+
+showDate :: Day -> Month -> Year -> String
 showDate day month year =
   "Day " ++ show day ++ " of " ++ show month ++ " month, year " ++ show year
 
@@ -370,7 +374,8 @@ showDate day month year =
   - uncons [1,2,3] ~> (Just 1, [2, 3])
 -}
 uncons :: [a] -> (Maybe a, [a])
-uncons l = error "not implemented"
+uncons [] = (Nothing, [])
+uncons l = (Just (head l), tail l)
 
 {-
   zipMaybe возвращает пару значений, если оба значения не Nothing:
@@ -380,7 +385,9 @@ uncons l = error "not implemented"
   - zipMaybe (Just "hey") (Just 2) ~> Just ("hey", 2)
 -}
 zipMaybe :: Maybe a -> Maybe b -> Maybe (a, b)
-zipMaybe a b = error "not implemented"
+zipMaybe Nothing _ = Nothing
+zipMaybe _ Nothing = Nothing
+zipMaybe (Just a) (Just b) = Just (a, b)
 
 -- </Задачи для самостоятельного решения>
 
@@ -401,7 +408,7 @@ zipMaybe a b = error "not implemented"
   то возвращает причину.
 
   Животные приручаются по следующим правилам:
-  
+
     - если это кот:
       - можно приручить, если младше 5 лет и имя не начинается с "D"
       - иначе сообщать "Can't adopt cat"
@@ -415,7 +422,16 @@ zipMaybe a b = error "not implemented"
       - сообщать "Can't adopt lions :("
 -}
 adopt :: AnimalWithType -> Either String AdoptedAnimal
-adopt = error "not implemented"
+adopt cat@(AnimalWithType age name Cat) = if age < 5 && (head name) /= 'D'
+  then Right (AdoptedAnimal cat)
+  else Left "Can't adopt cat"
+adopt dog@(AnimalWithType age name Dog) = if age > 1
+  then Right (AdoptedAnimal dog)
+  else Left "Can't adopt dog"
+adopt duck@(AnimalWithType age name Duck) = if name == "Daisy"
+  then Right (AdoptedAnimal duck)
+  else Left "Quack"
+adopt (AnimalWithType _ _ Lion) = Left "Can't adopt lions :("
 
 -- </Задачи для самостоятельного решения>
 
@@ -445,7 +461,7 @@ adopt = error "not implemented"
     |AnimalType| = 4
 
   Типы с одинаковыми cardinality изоморфны.
-  
+
   Какой cardinality у полиморфных ADT?
 
   1. Sum type
@@ -469,21 +485,21 @@ adopt = error "not implemented"
 
   Посчитайте cardinality для:
 
-  1. |Bool| = 
+  1. |Bool| = 2
 
-  2. |(Bool, Bool)| =
+  2. |(Bool, Bool)| = 4
 
     data (a, b) = (a, b)
 
-  3. |Maybe a| =
+  3. |Maybe a| = 1 + |a|
 
     data Maybe a = Nothing | Just a
 
-  4. |Bool -> Bool| =
+  4. |Bool -> Bool| = 4
 
-  5. |Bool -> (Bool, Bool)| =
+  5. |Bool -> (Bool, Bool)| = 16
 
-  6. |Bool -> (Bool, a)| =
+  6. |Bool -> (Bool, a)| = 4 * |a|^2
 
 -}
 
@@ -492,9 +508,9 @@ adopt = error "not implemented"
 {-
   В этом задании вам необходимо самостоятельно написать конструкторы бинарного дерева
   и вспомогательные функции. Тесты написаны так, что вспомогательные функции
-  зависят друг друга. 
+  зависят друг друга.
 -}
-data Tree a
+data Tree a = Leaf | Node { left :: Tree a, value :: a, right :: Tree a }
   {-
     Определите конструкторы для бинарного дерева:
       - лист
@@ -502,13 +518,17 @@ data Tree a
   -}
   deriving (Eq, Show)
 
+-- newType Leaf = Leaf (Maybe
+-- data Tree' = Leaf | Node deriving (Eq, Show)
+
 -- Возвращает пустое дерево
 empty :: Tree a
-empty = error "not implemented"
+empty = Leaf
 
 -- Возвращает True, если дерево - это лист
 isLeaf :: Tree a -> Bool
-isLeaf t = error "not implemented"
+isLeaf Leaf = True
+isLeaf _ = False
 
 -- Возвращает True, если дерево - не лист
 isNode :: Tree a -> Bool
@@ -516,32 +536,38 @@ isNode = not . isLeaf
 
 -- Если дерево это нода, то возвращает текущее значение ноды
 getValue :: Tree a -> Maybe a
-getValue t = error "not implemented"
+getValue (Node _ value _ ) = Just value
+getValue _ = Nothing
 
 -- Если дерево это нода, то возвращает левое поддерево
 getLeft :: Tree a -> Maybe (Tree a)
-getLeft t = error "not implemented"
+getLeft (Node left _ _) = Just left
+getLeft _ = Nothing
 
 -- Если дерево это нода, то возвращает правое поддерево
 getRight :: Tree a -> Maybe (Tree a)
-getRight t = error "not implemented"
+getRight (Node _ _ right) = Just right
+getRight _ = Nothing
 
 {-
   Вставка значения в дерево:
 
-    - insert 3 empty ~> Node Leaf 3 Leaf 
+    - insert 3 empty ~> Node Leaf 3 Leaf
     - insert 1 $ insert 3 $ insert 2 empty ~> Node (Node Leaf 1 Leaf) 2 (Node Leaf 3 Leaf)
     - insert 3 $ insert 2 $ insert 1 empty ~> Node Leaf 1 (Node Leaf 2 (Node Leaf 3 Leaf))
     - insert 1 $ insert 2 $ insert 3 empty ~> Node (Node (Node Leaf 1 Leaf) 2 Leaf) 3 Leaf
-    
+
    Обратите внимание, что требуется именно бинарное дерево поиска.
    https://en.wikipedia.org/wiki/Binary_search_tree
 
    В этом задании вам поможет функция `compare`. Она умеет возвращать
    три значения: GT, EQ, LT. Попробуйте поиграться в repl.
--} 
+-}
 insert :: Ord a => a -> Tree a -> Tree a
-insert v t = error "not implemented"
+insert v Leaf = Node Leaf v Leaf
+insert v (Node left value right) = if (compare v value) == LT
+  then Node (insert v left) value right
+  else Node left value (insert v right)
 
 {-
   Проверка наличия значения в дереве:
@@ -553,6 +579,10 @@ insert v t = error "not implemented"
     - isElem 4 $ insert 1 $ insert 3 $ insert 2 empty ~> False
 -}
 isElem :: Ord a => a -> Tree a -> Bool
-isElem v tree = error "not implemented"
+isElem _ Leaf = False
+isElem v (Node left value right) = case compare v value of
+  LT -> isElem v left
+  EQ -> True
+  GT -> isElem v right
 
 -- </Задачи для самостоятельного решения>
