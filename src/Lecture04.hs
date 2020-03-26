@@ -375,7 +375,7 @@ showDate day month year =
 -}
 uncons :: [a] -> (Maybe a, [a])
 uncons [] = (Nothing, [])
-uncons l = (Just (head l), tail l)
+uncons (x:xs) = (Just x, xs)
 
 {-
   zipMaybe возвращает пару значений, если оба значения не Nothing:
@@ -536,17 +536,17 @@ isNode = not . isLeaf
 
 -- Если дерево это нода, то возвращает текущее значение ноды
 getValue :: Tree a -> Maybe a
-getValue (Node _ value _ ) = Just value
+getValue (Node { value = v }) = Just v
 getValue _ = Nothing
 
 -- Если дерево это нода, то возвращает левое поддерево
 getLeft :: Tree a -> Maybe (Tree a)
-getLeft (Node left _ _) = Just left
+getLeft (Node { left = l }) = Just l
 getLeft _ = Nothing
 
 -- Если дерево это нода, то возвращает правое поддерево
 getRight :: Tree a -> Maybe (Tree a)
-getRight (Node _ _ right) = Just right
+getRight (Node { right = r }) = Just r
 getRight _ = Nothing
 
 {-
@@ -565,9 +565,9 @@ getRight _ = Nothing
 -}
 insert :: Ord a => a -> Tree a -> Tree a
 insert v Leaf = Node Leaf v Leaf
-insert v (Node left value right) = if (compare v value) == LT
-  then Node (insert v left) value right
-  else Node left value (insert v right)
+insert v (Node { left = l, value = val, right = r }) = if (compare v val) == LT
+  then Node (insert v l) val r
+  else Node l val (insert v r)
 
 {-
   Проверка наличия значения в дереве:
@@ -580,9 +580,9 @@ insert v (Node left value right) = if (compare v value) == LT
 -}
 isElem :: Ord a => a -> Tree a -> Bool
 isElem _ Leaf = False
-isElem v (Node left value right) = case compare v value of
-  LT -> isElem v left
+isElem v (Node { left = l, value = val, right = r }) = case compare v val of
+  LT -> isElem v l
   EQ -> True
-  GT -> isElem v right
+  GT -> isElem v r
 
 -- </Задачи для самостоятельного решения>
