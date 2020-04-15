@@ -76,7 +76,7 @@ yearGDP now percent = iterate (\x -> x * (1.0 + percent/100.0)) now
 
 -- Возвращает количество лет, которые нужны Китаю, чтобы догнать США в текущих условиях
 inHowManyYearsChinaWins :: Int
-inHowManyYearsChinaWins = fst $ head $ dropWhile chinaLooses $ zip [0..] $ zip chinaGDPs usaGDPs
+inHowManyYearsChinaWins = 1 + (fst $ head $ dropWhile chinaLooses $ zip [0..] $ zip chinaGDPs usaGDPs)
   where
     chinaLooses (_, (china, usa)) = china < usa
     chinaGDPs = yearGDP 10000 6
