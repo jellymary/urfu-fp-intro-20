@@ -336,7 +336,10 @@ module Lecture06 where
   и запишите все шаги β-редукции ->β.
 
   selfApp id = ... ->β ...
-  selfApp id = (λx:∀X.X->X.x [∀X.X->X] x) id ->β ...
+  selfApp id = (λx:∀X.X->X.x [∀X.X->X] x) (id:∀X.X->X)
+            ->β (λx:(∀X.X->X)->(∀X.X->X).x x) (id:∀X.X->X)
+            ->β id id
+            ->β id:(∀X.X->X)
 -}
 -- </Задачи для самостоятельного решения>
 
