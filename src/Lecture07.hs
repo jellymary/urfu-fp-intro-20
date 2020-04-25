@@ -1,6 +1,7 @@
 {-# OPTIONS_GHC -fno-warn-orphans -fno-warn-unused-imports #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 module Lecture07 where
 
 import Lecture07.Money
@@ -41,7 +42,7 @@ import Data.Foldable
       - UndecidableInstances
       - OverlappingInstances
       - IncoherentInstances
-      - ConstrainedClassMethods 
+      - ConstrainedClassMethods
   - deriving (Eq, Show)
     - https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/generic-deriving
 -}
@@ -65,15 +66,39 @@ data Expr
   | Abs Expr
   deriving Eq
 
+instance Show Expr where
+  show (Number x) = show x
+  show (Plus a b) = case (a, b) of
+    (Number x, Number y) -> show a ++ " + " ++ show b
+    (Number x, _) -> show a ++ " + " ++ "(" ++ show b ++ ")"
+    (_, Number y) -> "(" ++ show a ++ ")" ++ " + " ++ show b
+    _ -> "(" ++ show a ++ ")" ++ " + " ++ "(" ++ show b ++ ")"
+  show (Minus a b) = case (a, b) of
+    (Number x, Number y) -> show a ++ " - " ++ show b
+    (Number x, _) -> show a ++ " - " ++ "(" ++ show b ++ ")"
+    (_, Number y) -> "(" ++ show a ++ ")" ++ " - " ++ show b
+    _ -> "(" ++ show a ++ ")" ++ " - " ++ "(" ++ show b ++ ")"
+  show (Mult a b) = show a ++ " * " ++ show b
+  show (Abs x) = "|" ++ show x ++ "|"
+  show (UnaryMinus x) = case x of
+    Number n -> "-" ++ show n
+    Abs n -> "-" ++ show n
+    _ -> "-(" ++ show x ++ ")"
 {-
   Реализуйте instance Semigroup для вектора:
 -}
 newtype Vec a = Vec { unVec :: [a] } deriving (Eq, Show)
 
+instance Num a => Semigroup (Vec a) where
+  Vec a <> Vec b = Vec (map (\x -> uncurry (+) x) (zip a b))
+
 {-
   Реализуйте instance Semigroup для типа для логгирования:
 -}
 newtype LogEntry = LogEntry { unLogEntry :: String } deriving (Eq, Show)
+
+instance Semigroup LogEntry where
+  LogEntry a <> LogEntry b = LogEntry (a ++ b)
 
 {-
   В `src/Lecture07/Money.hs` определены:
@@ -84,21 +109,35 @@ newtype LogEntry = LogEntry { unLogEntry :: String } deriving (Eq, Show)
   Реализуйте инстансы Semigroup для Money a.
 -}
 
+instance Semigroup (Money USD) where
+  a <> b = mkDollars (getMoney a + getMoney b)
+
+instance Semigroup (Money RUB) where
+  a <> b = mkRubbles (getMoney a + getMoney b)
+
 {-
   Реализуйте инстанс Functor для ExactlyOne
 -}
 data ExactlyOne a = ExactlyOne a deriving (Eq, Show)
 
+instance Functor ExactlyOne where
+  fmap f (ExactlyOne x) = ExactlyOne (f x)
 {-
   Реализуйте инстанс Functor для `Maybe a`
 -}
 data Maybe' a = Just' a | Nothing' deriving (Eq, Show)
 
+instance Functor Maybe' where
+  fmap f (Just' x) = Just' (f x)
+  fmap _ Nothing' = Nothing'
 {-
   Реализуйте инстанс Functor для `List a`
 -}
 data List a = Nil | Cons a (List a) deriving (Eq, Show)
 
+instance Functor List where
+  fmap f (Cons x xs) = Cons (f x) $ fmap f xs
+  fmap _ Nil = Nil
 {-
   `FileTree a` — тип для представления дерева файловой системы.
 
@@ -111,7 +150,7 @@ data FileTree a
   deriving (Eq, Show)
 
 {-
-  `FileInfo` — тип с информацией о файле: содержит его размер и дату последнего изменения. 
+  `FileInfo` — тип с информацией о файле: содержит его размер и дату последнего изменения.
 -}
 data FileInfo = FileInfo
   { size :: Integer
@@ -146,7 +185,9 @@ latestModified = getMax . foldMap (\FileInfo{..} -> Max modified)
 -}
 
 instance Foldable FileTree where
-  foldMap = undefined
+  foldMap _ Empty = mempty
+  foldMap f (File _ x) = f x
+  foldMap f (Dir _ ft) = mconcat (map (\x -> foldMap f x) ft)
 
 {-
   В этом задании вам необходимо придумать и написать иерархию исключений
@@ -163,5 +204,21 @@ instance Foldable FileTree where
 
   Реализовывать инстансы не нужно.
 -}
+
+class Exception a where
+  getMessage :: a -> String
+
+data Severity = Debug | Info | Error | Warn
+newtype JSON = Json String
+
+class Exception a => ApiException a where
+  getSeverity :: a -> Severity
+  getJsonMessage :: a -> JSON
+
+class Exception a => DbException a where
+  getDbErrorMessage :: a -> String
+
+class Exception a => DomainLogicException a b where
+  getContext :: a -> b
 
 -- </Задачи для самостоятельного решения>
