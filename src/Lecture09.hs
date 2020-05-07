@@ -2,6 +2,11 @@
 
 module Lecture09 where
 
+import System.Directory
+import System.FilePath
+import System.Random
+import Data.List (sortBy)
+
 {-
   09: Монады IO и Random
 
@@ -99,38 +104,90 @@ data TodoEdit = TodoEdit
   } deriving (Eq, Show)
 
 createTodoList :: FilePath -> IO TodoList
-createTodoList rootFolder = error "not implemented"
+createTodoList rootFolder = do
+  doesExist <- doesDirectoryExist rootFolder
+  if doesExist then removeDirectoryRecursive rootFolder else return ()
+  createDirectory rootFolder
+  return (TodoList rootFolder)
+
+writeTodo :: TodoList -> Todo -> IO ()
+writeTodo (TodoList folderPath) (Todo (Id id) (Title title) (Content text) (Deadline deadline) isDone) = do
+  let path = folderPath </> id
+  doesExist <- doesDirectoryExist folderPath
+  if doesExist
+    then writeFile path (unlines [id, title, deadline, if isDone then "true" else "false", text])
+    else error "TodoList doesn't exist"
+  return ()
 
 addTodo :: TodoList -> Title -> Content -> Deadline -> IO Id
-addTodo todoList title text deadline = error "not implemented"
+addTodo todoList (Title title) text (Deadline deadline) = do
+  let id = title ++ deadline
+  writeTodo todoList (Todo (Id id) (Title title) text (Deadline deadline) False)
+  return (Id id)
 
 readTodo :: TodoList -> Id -> IO Todo
-readTodo todoList id = error "not implemented"
+readTodo (TodoList folderPath) (Id id) =
+  do
+    raw <- readFile $ folderPath </> id
+    let [id, title, deadline, rawIsDone, text] = lines raw
+    let isDone = parseIsDone rawIsDone
+    return (Todo (Id id) (Title title) (Content text) (Deadline deadline) isDone)
+  where
+    parseIsDone :: String -> Bool
+    parseIsDone rawIsDone = case rawIsDone of
+      "true" -> True
+      "false" -> False
+      _ -> error "isDone cannot be deserialized"
 
 showTodo :: TodoList -> Id -> IO ()
-showTodo todoList id = error "not implemented"
+showTodo todoList id = do
+  (Todo (Id id) (Title title) (Content text) (Deadline deadline) isDone) <- readTodo todoList id
+  putStrLn title
+  putStrLn $ "Deadline: " ++ deadline
+  putStrLn $ if isDone then "Done :)" else "Not done :("
+  putStrLn "~~~"
+  putStrLn text
+  putStrLn "\n"
 
 removeTodo :: TodoList -> Id -> IO ()
-removeTodo todoList id = error "not implemented"
+removeTodo (TodoList folderPath) (Id id) = do
+  let filePath = folderPath </> id
+  doesExist <- doesFileExist filePath
+  if doesExist then removeFile filePath else return ()
 
 editTodo :: TodoList -> Id -> TodoEdit -> IO ()
-editTodo todoList id update = error "not implemented"
+editTodo todoList id (TodoEdit newTitle newText newDeadline) = do
+  Todo {todoId=id, isDone=isDone} <- readTodo todoList id
+  writeTodo todoList (Todo id newTitle newText newDeadline isDone)
 
 setTodoAsDone :: TodoList -> Id -> IO ()
-setTodoAsDone todoList id = error "not implemented"
+setTodoAsDone todoList id = do
+  Todo id title content deadline _ <- readTodo todoList id
+  writeTodo todoList (Todo id title content deadline True)
 
 -- Todo должны быть упорядочены по возрастанию deadline'а
 readAllTodo :: TodoList -> IO [Todo]
-readAllTodo todoList = error "not implemented"
+readAllTodo todoList@(TodoList folderPath) = do
+  todoIds <- listDirectory folderPath
+  todos <- mapM (\id -> readTodo todoList (Id id)) todoIds
+  return $ sortBy (\(Todo{deadline=(Deadline first)}) (Todo{deadline=(Deadline second)}) -> compare first second) todos
 
 readUnfinishedTodo :: TodoList -> IO [Todo]
-readUnfinishedTodo todoList = error "not implemented"
+readUnfinishedTodo todoList = do
+  todos <- readAllTodo todoList
+  return $ filter (\(Todo{isDone=isDone}) -> not isDone) todos
 
 showAllTodo :: TodoList -> IO ()
-showAllTodo todoList = error "not implemented"
+showAllTodo todoList@(TodoList folderPath) = do
+  todos <- readAllTodo todoList
+  _ <- mapM (\(Todo{todoId=id}) -> showTodo todoList id) todos
+  return ()
 
 showUnfinishedTodo :: TodoList -> IO ()
-showUnfinishedTodo todoList = error "not implemented"
+showUnfinishedTodo todoList = do
+  todos <- readUnfinishedTodo todoList
+  _ <- mapM (\(Todo{todoId=id}) -> showTodo todoList id) todos
+  return ()
 
 {-
   Напишите игру для угадывания случайного числа.
@@ -145,11 +202,27 @@ showUnfinishedTodo todoList = error "not implemented"
   > Too big
   Your number: 25
   > Too small
-  Your number: 37  
+  Your number: 37
   > Yep, that's the number!
 -}
 
+guessNumber :: Integer -> IO ()
+guessNumber secretNumber = do
+  putStrLn "Your number: "
+  line <- getLine
+  let alleged = read line :: Integer
+  case compare alleged secretNumber of
+    LT -> do
+      putStrLn "Too small\n"
+      guessNumber secretNumber
+    GT -> do
+      putStrLn "Too big\n"
+      guessNumber secretNumber
+    EQ -> putStrLn "Yep, that's the number!"
+
 playGuessGame :: IO ()
-playGuessGame = error "not implemented"
+playGuessGame = do
+  number <- randomRIO (0, 100)
+  guessNumber number
 
 -- </Задачи для самостоятельного решения>
